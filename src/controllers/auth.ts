@@ -17,7 +17,7 @@ const generateToken = (id: number, res: Response) => {
         httpOnly: true,
         maxAge: 1000 * 60 * 60, // 1h
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
     })
 }
 
@@ -92,7 +92,7 @@ export const logoutUser = asyncHandler(async (req, res, next) => {
         maxAge: 0,
         expires: new Date(0),
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
     })
     
     res.status(200).json({ success: true, data: {}})
