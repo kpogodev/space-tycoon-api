@@ -19,11 +19,33 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+enum Faction {
+  COSMIC
+  VOID
+  GALACTIC
+  QUANTUM
+  DOMINION
+  ASTRO
+  CORSAIRS
+  OBSIDIAN
+  AEGIS
+  UNITED
+  SOLITARY
+  COBALT
+  OMEGA
+  ECHO
+  LORDS
+  CULT
+  ANCIENTS
+  SHADOW
+  ETHEREAL
+}
+
 model Agent {
   id        Int      @id @default(autoincrement())
-  symbol    String
-  faction   String
-  token     String
+  symbol    String   @unique
+  faction   Faction
+  token     String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    Int
