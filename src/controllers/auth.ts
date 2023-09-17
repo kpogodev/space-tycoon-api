@@ -7,17 +7,21 @@ import { errorMessage } from '../utils/errorMessage'
 import { registerSchema, loginSchema } from '../validators/authValidator'
 import type { Response } from 'express'
 
+
 // Helpers
+const isProduction = process.env.NODE_ENV === 'production'
+
 const generateToken = (id: number, res: Response) => {
     const token = jwt.sign({ id }, process.env.JWT_SECRET!, {
-        expiresIn: '1h',
+        expiresIn: '1d',
     })
 
     res.cookie('jwt', token, {
         httpOnly: true,
-        maxAge: 1000 * 60 * 60, // 1h
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/',
     })
 }
 
@@ -27,15 +31,18 @@ const generateToken = (id: number, res: Response) => {
 export const registerUser = asyncHandler(async (req, res, next) => {
     const validBody = registerSchema.safeParse(req.body)
 
-    if (!validBody.success) return next(new ErrorResponse(errorMessage(validBody.error), 400))
+    if (!validBody.success) throw new ErrorResponse(errorMessage(validBody.error), 400)
 
-    const userExist = await prisma.user.findUnique({
+    const userExist = await prisma.user.findFirst({
         where: {
-            email: validBody.data.email,
+            OR: [
+                { email: validBody.data.email },
+                { nick: validBody.data.nick }
+            ]
         },
     })
 
-    if (userExist) return next(new ErrorResponse('User already exists', 400))
+    if (userExist) throw new ErrorResponse('User already exists', 400)
 
     const newUser = await prisma.user.create({
         data: {
@@ -49,7 +56,7 @@ export const registerUser = asyncHandler(async (req, res, next) => {
         },
     })
 
-    if (!newUser) return next(new ErrorResponse('Something went wrong', 500))
+    if (!newUser) throw new ErrorResponse('Something went wrong', 500)
     generateToken(newUser.id, res)
 
     res.status(201).json({ success: true, data: newUser })
@@ -61,7 +68,7 @@ export const registerUser = asyncHandler(async (req, res, next) => {
 export const loginUser = asyncHandler(async (req, res, next) => {
     const validBody = loginSchema.safeParse(req.body)
 
-    if (!validBody.success) return next(new ErrorResponse(errorMessage(validBody.error), 400))
+    if (!validBody.success) throw new ErrorResponse(errorMessage(validBody.error), 400)
 
     const user = await prisma.user.findUnique({
         where: {
@@ -69,11 +76,11 @@ export const loginUser = asyncHandler(async (req, res, next) => {
         },
     })
 
-    if (!user) return next(new ErrorResponse('Invalid credentials', 401))
+    if (!user) throw new ErrorResponse('Invalid credentials', 401)
 
     const isMatch = await bcrypt.compare(validBody.data.password, user.password)
 
-    if (!isMatch) return next(new ErrorResponse('Invalid credentials', 401))
+    if (!isMatch) throw new ErrorResponse('Invalid credentials', 401)
 
     generateToken(user.id, res)
 
@@ -96,4 +103,12 @@ export const logoutUser = asyncHandler(async (req, res, next) => {
     })
     
     res.status(200).json({ success: true, data: {}})
+})
+
+
+// @desc    Check if user is logged in
+// @route   POST /api/auth/check
+// @access  Private
+export const checkUser = asyncHandler(async (req, res, next) => {
+    res.status(200).json({ success: true, data: {} })
 })
