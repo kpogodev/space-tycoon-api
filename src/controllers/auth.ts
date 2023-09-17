@@ -7,7 +7,10 @@ import { errorMessage } from '../utils/errorMessage'
 import { registerSchema, loginSchema } from '../validators/authValidator'
 import type { Response } from 'express'
 
+
 // Helpers
+const isProduction = process.env.NODE_ENV === 'production'
+
 const generateToken = (id: number, res: Response) => {
     const token = jwt.sign({ id }, process.env.JWT_SECRET!, {
         expiresIn: '1d',
@@ -16,8 +19,9 @@ const generateToken = (id: number, res: Response) => {
     res.cookie('jwt', token, {
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24, // 1 day
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
+        path: '/',
     })
 }
 
