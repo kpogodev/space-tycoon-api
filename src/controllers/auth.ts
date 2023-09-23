@@ -99,7 +99,7 @@ export const logoutUser = asyncHandler(async (req, res, next) => {
         maxAge: 0,
         expires: new Date(0),
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        sameSite: isProduction ? 'none' : 'lax',
     })
     
     res.status(200).json({ success: true, data: {}})

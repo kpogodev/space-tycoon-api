@@ -5,8 +5,8 @@ import { authMiddleware } from '../middleware/authMiddleware';
 const router = express.Router();
 
 router.route('/').post(authMiddleware, createAgent).get(authMiddleware, getAgents);
-router.route('/:id').get(authMiddleware, getAgent);
 router.route('/list').get(authMiddleware, getAgentsList);
+router.route('/:id').get(authMiddleware, getAgent);
 router.route('/token/:id').get(authMiddleware, getAgentToken);
 
 
