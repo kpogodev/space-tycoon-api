@@ -2,10 +2,10 @@ import { prisma } from '../utils/prismaClient'
 import asyncHandler from 'express-async-handler'
 import ErrorResponse from '../utils/ErrorResponse'
 import { errorMessage } from '../utils/errorMessage'
-import { createAgentSchema } from '../validators/agentValidator'
+import { createAgentSchema, patchAgentSchema } from '../validators/agentValidator'
 import { axiosRequest } from '../utils/axiosRequest'
 import type { ExtendedRequest } from '../types/global'
-import type { DataResponse} from '../types/spacetraders'
+import type { DataResponse } from '../types/spacetraders'
 
 // @desc   Get all agents
 // @route  GET /api/agent
@@ -66,7 +66,11 @@ export const createAgent = asyncHandler(async (req: ExtendedRequest, res, next) 
 
     const {
         data: { token },
-    } = await axiosRequest<typeof requestBody, DataResponse>('POST', 'https://api.spacetraders.io/v2/register', requestBody)
+    } = await axiosRequest<typeof requestBody, DataResponse>(
+        'POST',
+        'https://api.spacetraders.io/v2/register',
+        requestBody
+    )
 
     const agent = await prisma.agent.create({
         data: {
@@ -80,6 +84,33 @@ export const createAgent = asyncHandler(async (req: ExtendedRequest, res, next) 
     if (!agent) return next(new ErrorResponse('Agent not created', 500))
 
     res.status(201).json({ success: true, data: agent })
+})
+
+// @desc Patch an agent
+// @route PATCH /api/agent/:id
+// @access Private
+export const patchAgent = asyncHandler(async (req: ExtendedRequest, res, next) => {
+    const { id: userId } = req?.user || {}
+    const { id: agentId } = req?.params || {}
+    const validBody = patchAgentSchema.safeParse(req.body)
+
+    if (!userId) return next(new ErrorResponse('Something went wrong (Incorrect userId)', 500))
+
+    if (!validBody.success) {
+        return next(new ErrorResponse(errorMessage(validBody.error), 400))
+    }
+
+    const agent = await prisma.agent.update({
+        where: {
+            id: +agentId,
+            userId: userId,
+        },
+        data: validBody.data,
+    })
+
+    if (!agent) return next(new ErrorResponse('Agent not updated', 500))
+
+    res.status(200).json({ success: true, data: agent })
 })
 
 // @desc   Get agents list
