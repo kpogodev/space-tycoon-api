@@ -7,6 +7,54 @@ import { axiosRequest } from '../utils/axiosRequest'
 import type { ExtendedRequest } from '../types/global'
 import type { DataResponse } from '../types/spacetraders'
 
+// @desc   Create a new agent
+// @route  POST /api/agent
+// @access Private
+export const createAgent = asyncHandler(async (req: ExtendedRequest, res, next) => {
+    const { id: userId, email: userEmail } = req?.user || {}
+    const validBody = createAgentSchema.safeParse(req.body)
+
+    if (!userId) return next(new ErrorResponse('Something went wrong (Incorrect userId)', 500))
+
+    if (!validBody.success) {
+        return next(new ErrorResponse(errorMessage(validBody.error), 400))
+    }
+
+    const requestBody = {
+        symbol: validBody.data.symbol,
+        faction: validBody.data.faction,
+        email: userEmail,
+    }
+
+    const {
+        data: { token },
+    } = await axiosRequest<typeof requestBody, DataResponse>(
+        'POST',
+        'https://api.spacetraders.io/v2/register',
+        requestBody
+    )
+
+    const agent = await prisma.agent.create({
+        data: {
+            userId: userId,
+            symbol: validBody.data.symbol,
+            faction: validBody.data.faction,
+            token: token,
+        },
+        select: {
+            id: true,
+            symbol: true,
+            faction: true,
+            avatar: true,
+            updatedAt: true,
+        }
+    })
+
+    if (!agent) return next(new ErrorResponse('Agent not created', 500))
+
+    res.status(201).json({ success: true, data: agent })
+})
+
 // @desc   Get all agents
 // @route  GET /api/agent
 // @access Private
@@ -45,47 +93,6 @@ export const getAgent = asyncHandler(async (req: ExtendedRequest, res, next) => 
     res.status(200).json({ success: true, data: agent })
 })
 
-// @desc   Create a new agent
-// @route  POST /api/agent
-// @access Private
-export const createAgent = asyncHandler(async (req: ExtendedRequest, res, next) => {
-    const { id: userId, email: userEmail } = req?.user || {}
-    const validBody = createAgentSchema.safeParse(req.body)
-
-    if (!userId) return next(new ErrorResponse('Something went wrong (Incorrect userId)', 500))
-
-    if (!validBody.success) {
-        return next(new ErrorResponse(errorMessage(validBody.error), 400))
-    }
-
-    const requestBody = {
-        symbol: validBody.data.symbol,
-        faction: validBody.data.faction,
-        email: userEmail,
-    }
-
-    const {
-        data: { token },
-    } = await axiosRequest<typeof requestBody, DataResponse>(
-        'POST',
-        'https://api.spacetraders.io/v2/register',
-        requestBody
-    )
-
-    const agent = await prisma.agent.create({
-        data: {
-            userId: userId,
-            symbol: validBody.data.symbol,
-            faction: validBody.data.faction,
-            token: token,
-        },
-    })
-
-    if (!agent) return next(new ErrorResponse('Agent not created', 500))
-
-    res.status(201).json({ success: true, data: agent })
-})
-
 // @desc Patch an agent
 // @route PATCH /api/agent/:id
 // @access Private
@@ -113,6 +120,27 @@ export const patchAgent = asyncHandler(async (req: ExtendedRequest, res, next) =
     res.status(200).json({ success: true, data: agent })
 })
 
+// @desc   Delete an agent
+// @route  DELETE /api/agent/:id
+// @access Private
+export const deleteAgent = asyncHandler(async (req: ExtendedRequest, res, next) => {
+    const { id: userId } = req?.user || {}
+    const { id: agentId } = req?.params || {}
+
+    if (!userId) return next(new ErrorResponse('Something went wrong (Incorrect userId)', 500))
+
+    const agent = await prisma.agent.delete({
+        where: {
+            id: +agentId,
+            userId: userId,
+        },
+    })
+
+    if (!agent) return next(new ErrorResponse('Agent was not deleted', 500))
+
+    res.status(200).json({ success: true, data: {} })
+})
+
 // @desc   Get agents list
 // @route  GET /api/agent/list
 // @access Private
@@ -129,6 +157,8 @@ export const getAgentsList = asyncHandler(async (req: ExtendedRequest, res, next
             id: true,
             symbol: true,
             faction: true,
+            avatar: true,
+            updatedAt: true,
         },
     })
 
